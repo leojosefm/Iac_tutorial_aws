@@ -14,12 +14,13 @@ class AwsApiStack(Stack):
 
     def __init__(self, scope: Construct, id: str, **kwargs) -> None:
         super().__init__(scope, id, **kwargs)
-
+        stage = self.node.try_get_context("stage") or os.environ.get("STAGE", "dev")
 
         # --- DATABASE ---
         items_table = dynamodb.Table(
             self,
             "ItemsTable",
+            table_name=f"items-{stage}",
             partition_key=dynamodb.Attribute(
                 name="id",
                 type=dynamodb.AttributeType.STRING,
@@ -36,6 +37,7 @@ class AwsApiStack(Stack):
         api_handler = _lambda.Function(
             self,
             "ApiHandler",
+            function_name=f"items-api-handler-{stage}",
             runtime=_lambda.Runtime.PYTHON_3_12,
             handler="index.handler",
             code=_lambda.Code.from_asset("lambda"),
@@ -56,7 +58,7 @@ class AwsApiStack(Stack):
         api = apigw.RestApi(
             self,
             "ItemsApi",
-            rest_api_name="Item Service API",
+            rest_api_name=f"Item Service API {stage}",
             description="API for items, built with CDK",
         )
 
