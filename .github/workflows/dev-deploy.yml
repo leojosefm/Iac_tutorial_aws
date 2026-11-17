@@ -1,9 +1,7 @@
 name: Deploy DEV
 
 on:
-  push:
-    branches:
-      - dev
+  workflow_dispatch:
 
 permissions:
   id-token: write
@@ -11,21 +9,17 @@ permissions:
 
 jobs:
   deploy:
-    name: Deploy Dev Stack
     runs-on: ubuntu-latest
-
     environment: dev
 
     env:
       AWS_REGION: us-east-1
-      STAGE: dev
+      STAGE: prod
 
     steps:
-      - name: Checkout source
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
@@ -35,52 +29,13 @@ jobs:
           pip install -r requirements.txt
 
       - name: Install AWS CDK
-        run: |
-          npm install -g aws-cdk
+        run: npm install -g aws-cdk
 
-      # --------------------------------------------
-      # Debug GitHub Context
-      # --------------------------------------------
-      - name: Show GitHub Context
-        run: |
-          echo "Repository : ${{ github.repository }}"
-          echo "Ref        : ${{ github.ref }}"
-          echo "Ref Name   : ${{ github.ref_name }}"
-          echo "Event      : ${{ github.event_name }}"
-          echo "Actor      : ${{ github.actor }}"
-
-      # --------------------------------------------
-      # Dump OIDC Claims
-      # --------------------------------------------
-      - name: Dump OIDC Claims
-        uses: github/actions-oidc-debugger@v1
-
-      # --------------------------------------------
-      # Configure AWS Credentials
-      # --------------------------------------------
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.DEV_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
-      # --------------------------------------------
-      # Verify identity
-      # --------------------------------------------
-      - name: Verify AWS Identity
-        run: aws sts get-caller-identity
-
-      # --------------------------------------------
-      # CDK
-      # --------------------------------------------
-      - name: CDK Synth
-        run: |
-          cdk synth -c stage=${{ env.STAGE }}
-
-      - name: CDK Diff
-        run: |
-          cdk diff -c stage=${{ env.STAGE }}
-
       - name: CDK Deploy
-        run: |
-          cdk deploy --all --require-approval never -c stage=${{ env.STAGE }}
+        run: cdk deploy --all --require-approval never -c stage=${{ env.STAGE }}
