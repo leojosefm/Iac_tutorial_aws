@@ -9,17 +9,23 @@ permissions:
 
 jobs:
   deploy:
+    name: Deploy Dev Stack
     runs-on: ubuntu-latest
+
     environment: dev
 
     env:
       AWS_REGION: us-east-1
-      STAGE: prod
+      STAGE: dev
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
 
-      - uses: actions/setup-python@v5
+      - name: Setup Python
+        uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
@@ -31,11 +37,32 @@ jobs:
       - name: Install AWS CDK
         run: npm install -g aws-cdk
 
+      - name: Show GitHub Context
+        run: |
+          echo "Repository : ${{ github.repository }}"
+          echo "Ref        : ${{ github.ref }}"
+          echo "Ref Name   : ${{ github.ref_name }}"
+          echo "Event      : ${{ github.event_name }}"
+          echo "Actor      : ${{ github.actor }}"
+
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.DEV_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
+      - name: Verify AWS Identity
+        run: aws sts get-caller-identity
+
+      - name: CDK Synth
+        run: cdk synth -c stage=${{ env.STAGE }}
+
+      - name: CDK Diff
+        run: cdk diff -c stage=${{ env.STAGE }}
+
       - name: CDK Deploy
-        run: cdk deploy --all --require-approval never -c stage=${{ env.STAGE }}
+        run: |
+          cdk deploy \
+            --all \
+            --require-approval never \
+            -c stage=${{ env.STAGE }}
