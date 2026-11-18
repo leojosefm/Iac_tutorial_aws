@@ -1,38 +1,34 @@
-# AWS CDK Python API Tutorial
+# AWS CDK Python Serverless REST API
 
-This project demonstrates how to build and deploy a serverless REST API using:
+This project demonstrates how to build and deploy a serverless REST API on AWS using Infrastructure as Code (IaC).
+
+## Technologies
 
 - AWS CDK (Python)
-- API Gateway
+- Amazon API Gateway
 - AWS Lambda
 - Amazon DynamoDB
+- AWS CloudFormation
 - GitHub Actions
-- GitHub OIDC Authentication (No AWS Access Keys)
 
 ---
 
 # Architecture
 
 ```
-GitHub
-    │
-    │ Push to dev
-    ▼
-GitHub Actions
-    │
-    │ OIDC Authentication
-    ▼
-GitHub Deployment Role
-    │
-    ▼
-AWS CloudFormation
-    │
-    ├── API Gateway
-    ├── Lambda
-    └── DynamoDB
+Client
+   │
+   ▼
+API Gateway
+   │
+   ▼
+Lambda
+   │
+   ▼
+DynamoDB
 ```
 
-The Lambda function performs CRUD operations against DynamoDB through API Gateway.
+Infrastructure is provisioned using AWS CDK and deployed through GitHub Actions.
 
 ---
 
@@ -45,15 +41,15 @@ Install:
 - AWS CLI
 - AWS CDK CLI
 
-Install CDK globally:
+Install CDK:
 
 ```bash
 npm install -g aws-cdk
 ```
 
-Create and activate a virtual environment.
+Create a virtual environment.
 
-Linux / macOS
+Linux/macOS
 
 ```bash
 python3 -m venv .venv
@@ -67,7 +63,7 @@ python -m venv .venv
 .venv\Scripts\activate.bat
 ```
 
-Install Python dependencies.
+Install dependencies.
 
 ```bash
 pip install -r requirements.txt
@@ -75,11 +71,9 @@ pip install -r requirements.txt
 
 ---
 
-# Bootstrap AWS CDK
+# Bootstrap CDK
 
-CDK requires a bootstrap stack in each AWS account/region.
-
-Run once:
+Bootstrap the AWS account once per region.
 
 ```bash
 cdk bootstrap
@@ -89,306 +83,149 @@ cdk bootstrap
 
 # Local Development
 
-Useful commands:
+List stacks
 
 ```bash
 cdk ls
 ```
 
-Lists all stacks.
+Generate CloudFormation template
 
 ```bash
 cdk synth
 ```
 
-Generates the CloudFormation template.
+Preview infrastructure changes
 
 ```bash
 cdk diff
 ```
 
-Shows infrastructure changes.
+Deploy
 
 ```bash
 cdk deploy
 ```
 
-Deploys the stack.
+Destroy
 
 ```bash
 cdk destroy
 ```
 
-Deletes the stack.
+---
+
+# GitHub Environments
+
+Two GitHub Environments are used.
+
+- dev
+- prod
+
+Each environment contains:
+
+| Variable | Value |
+|----------|-------|
+| AWS_REGION | us-east-1 |
+| STAGE | dev / prod |
+
+Required GitHub Secrets:
+
+| Secret |
+|---------|
+| AWS_ACCESS_KEY_ID |
+| AWS_SECRET_ACCESS_KEY |
 
 ---
 
-# GitHub Deployment
+# CI/CD
 
-Deployments are performed by GitHub Actions using **OIDC**.
+## Development
 
-No AWS Access Keys are stored in GitHub.
-
----
-
-# Step 1 - Create GitHub OIDC Identity Provider
-
-Open
-
-```
-AWS Console
-→ IAM
-→ Identity Providers
-→ Add Provider
-```
-
-Provider Type
-
-```
-OpenID Connect
-```
-
-Provider URL
-
-```
-https://token.actions.githubusercontent.com
-```
-
-Audience
-
-```
-sts.amazonaws.com
-```
-
-This only needs to be created once per AWS account.
-
----
-
-# Step 2 - Create IAM Deployment Roles
-
-Create two IAM Roles.
-
-```
-github-dev-role
-github-prod-role
-```
-
-Trusted Entity
-
-```
-Web Identity
-```
-
-Provider
-
-```
-token.actions.githubusercontent.com
-```
-
-Audience
-
-```
-sts.amazonaws.com
-```
-
-Repository
-
-```
-leojosefm/Iac_tutorial_aws
-```
-
-Branch
-
-Development role
-
-```
-dev
-```
-
-Production role
-
-```
-main
-```
-
----
-
-# Step 3 - Permissions
-
-For learning purposes attach:
-
-```
-AdministratorAccess
-```
-
-Later this can be replaced with a least-privilege policy.
-
----
-
-# Step 4 - GitHub Environments
-
-Create two GitHub Environments.
-
-```
-dev
-prod
-```
-
-Repository
-
-```
-Settings
-→ Environments
-```
-
----
-
-## Environment Secrets
-
-### dev
-
-```
-DEV_ROLE_ARN
-```
-
-Example
-
-```
-arn:aws:iam::295263927767:role/github-dev-role
-```
-
-### prod
-
-```
-PROD_ROLE_ARN
-```
-
-Example
-
-```
-arn:aws:iam::295263927767:role/github-prod-role
-```
-
-Although the ARN is not considered sensitive, this project stores it as a secret because the repository is public.
-
----
-
-## Environment Variables
-
-### dev
-
-```
-AWS_REGION = us-east-1
-STAGE = dev
-```
-
-### prod
-
-```
-AWS_REGION = us-east-1
-STAGE = prod
-```
-
----
-
-# GitHub Workflows
-
-Three workflows are used.
-
-## 1. Dev Deployment
-
-Trigger
+Trigger:
 
 ```
 Push to dev
 ```
 
-Workflow
+Pipeline:
 
 ```
-.github/workflows/dev-deploy.yml
+CDK Synth
+↓
+CDK Diff
+↓
+CDK Deploy
 ```
-
-Actions
-
-- Authenticate using GitHub OIDC
-- CDK Synth
-- CDK Deploy
 
 ---
 
-## 2. Production Diff
+## Promote to Production
 
-Trigger
-
-```
-Pull Request to main
-```
-
-Workflow
+Trigger:
 
 ```
-.github/workflows/prod-diff.yml
+Manual
 ```
 
-Actions
-
-- Authenticate using GitHub OIDC
-- CDK Diff
-
-This allows infrastructure changes to be reviewed before deployment.
+This workflow merges the `dev` branch into `main`.
 
 ---
 
-## 3. Production Deployment
+## Production Validation
 
-Trigger
-
-```
-Manual (workflow_dispatch)
-```
-
-Workflow
+Trigger:
 
 ```
-.github/workflows/prod-deploy.yml
+Push to main
 ```
 
-Actions
+Pipeline:
 
-- Authenticate using GitHub OIDC
-- CDK Deploy
+```
+CDK Synth
+↓
+CDK Diff
+```
 
-Production deployments are intentionally manual.
+This validates infrastructure changes before deployment.
+
+---
+
+## Production Deployment
+
+Trigger:
+
+```
+Manual
+```
+
+Pipeline:
+
+```
+CDK Deploy
+```
 
 ---
 
 # Deployment Flow
 
 ```
-Developer
-      │
-      ▼
 Push to dev
       │
       ▼
-GitHub Actions
+DEV Deployment
       │
       ▼
-OIDC Authentication
+Manual Promotion
+(dev → main)
       │
       ▼
-github-dev-role
+Production Diff
       │
       ▼
-CloudFormation
-      │
-      ├── API Gateway
-      ├── Lambda
-      └── DynamoDB
+Manual Production Deployment
 ```
-
-Production follows the same process using the production role.
 
 ---
 
@@ -397,43 +234,38 @@ Production follows the same process using the production role.
 ```
 .
 ├── app.py
-├── aws_api
+├── aws_api/
 │   └── aws_api_stack.py
-├── lambda
+├── lambda/
 │   └── index.py
 ├── requirements.txt
 ├── cdk.json
-└── .github
-    └── workflows
+└── .github/
+    └── workflows/
         ├── dev-deploy.yml
+        ├── promote-dev-to-main.yml
         ├── prod-diff.yml
         └── prod-deploy.yml
 ```
 
 ---
 
-# Resources Created
+# AWS Resources
 
-The stack deploys:
+The CDK stack creates:
 
 - API Gateway REST API
 - Lambda Function
 - DynamoDB Table
-- Lambda Execution Role
-- API Gateway Permissions
+- IAM Roles and Policies
 - CloudFormation Outputs
 
 ---
 
-# Security
+# Future Improvements
 
-Authentication from GitHub to AWS uses OpenID Connect (OIDC).
-
-Benefits:
-
-- No long-lived AWS Access Keys
-- Temporary AWS credentials
-- Branch-specific deployment roles
-- Separate permissions for Development and Production
-
-This follows the current AWS recommended approach for GitHub Actions deployments.
+- Replace IAM Access Keys with GitHub OIDC authentication
+- Least-privilege IAM policies
+- Automated testing
+- Multi-account deployments
+- Monitoring with CloudWatch

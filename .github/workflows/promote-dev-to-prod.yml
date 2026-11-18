@@ -1,4 +1,4 @@
-name: Promote DEV to MAIN
+name: Promote dev to prod
 
 on:
   workflow_dispatch:
@@ -8,7 +8,7 @@ permissions:
 
 jobs:
   promote:
-    name: Promote DEV to MAIN
+    name: Promote DEV to prod
     runs-on: ubuntu-latest
 
     steps:
@@ -25,11 +25,11 @@ jobs:
       - name: Fetch branches
         run: git fetch origin
 
-      - name: Merge dev into main
+      - name: Merge dev into prod
         run: |
-          git checkout main
-          git pull origin main
+          git checkout prod
+          git pull origin prod
 
-          git merge origin/dev --no-ff -m "Promote dev to main"
+          git merge origin/dev --no-ff -m "Promote dev to prod"
 
-          git push origin main
+          git push origin prod
