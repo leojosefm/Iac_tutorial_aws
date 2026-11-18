@@ -3,7 +3,7 @@ name: Production CDK Diff
 on:
   pull_request:
     branches:
-      - main
+      - prod
 
 permissions:
   contents: read
