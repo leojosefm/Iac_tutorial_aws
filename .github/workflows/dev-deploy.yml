@@ -1,0 +1,72 @@
+name: Deploy DEV
+
+on:
+  push:
+    branches:
+      - dev
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy Dev Stack
+    runs-on: ubuntu-latest
+
+    environment: dev
+
+    env:
+      AWS_REGION: us-east-1
+      STAGE: dev
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Install AWS CDK
+        run: |
+          npm install -g aws-cdk
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Verify AWS Identity
+        run: aws sts get-caller-identity
+
+      - name: Show GitHub Context
+        run: |
+          echo "Repository : ${{ github.repository }}"
+          echo "Ref        : ${{ github.ref }}"
+          echo "Ref Name   : ${{ github.ref_name }}"
+          echo "Event      : ${{ github.event_name }}"
+          echo "Actor      : ${{ github.actor }}"
+
+      - name: CDK Version
+        run: cdk --version
+
+      - name: CDK Synth
+        run: cdk synth -c stage=${{ env.STAGE }}
+
+      - name: CDK Diff
+        run: cdk diff -c stage=${{ env.STAGE }}
+
+      - name: CDK Deploy
+        run: |
+          cdk deploy \
+            --all \
+            --require-approval never \
+            -c stage=${{ env.STAGE }}

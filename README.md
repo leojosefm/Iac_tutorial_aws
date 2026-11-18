@@ -1,58 +1,271 @@
+# AWS CDK Python Serverless REST API
 
-# Welcome to your CDK Python project!
+This project demonstrates how to build and deploy a serverless REST API on AWS using Infrastructure as Code (IaC).
 
-This is a blank project for CDK development with Python.
+## Technologies
 
-The `cdk.json` file tells the CDK Toolkit how to execute your app.
+- AWS CDK (Python)
+- Amazon API Gateway
+- AWS Lambda
+- Amazon DynamoDB
+- AWS CloudFormation
+- GitHub Actions
 
-This project is set up like a standard Python project.  The initialization
-process also creates a virtualenv within this project, stored under the `.venv`
-directory.  To create the virtualenv it assumes that there is a `python3`
-(or `python` for Windows) executable in your path with access to the `venv`
-package. If for any reason the automatic creation of the virtualenv fails,
-you can create the virtualenv manually.
+---
 
-To manually create a virtualenv on MacOS and Linux:
-
-```
-$ python3 -m venv .venv
-```
-
-After the init process completes and the virtualenv is created, you can use the following
-step to activate your virtualenv.
+# Architecture
 
 ```
-$ source .venv/bin/activate
+Client
+   │
+   ▼
+API Gateway
+   │
+   ▼
+Lambda
+   │
+   ▼
+DynamoDB
 ```
 
-If you are a Windows platform, you would activate the virtualenv like this:
+Infrastructure is provisioned using AWS CDK and deployed through GitHub Actions.
+
+---
+
+# Prerequisites
+
+Install:
+
+- Python 3.12+
+- Node.js
+- AWS CLI
+- AWS CDK CLI
+
+Install CDK:
+
+```bash
+npm install -g aws-cdk
+```
+
+Create a virtual environment.
+
+Linux/macOS
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+```
+
+Windows
+
+```bat
+python -m venv .venv
+.venv\Scripts\activate.bat
+```
+
+Install dependencies.
+
+```bash
+pip install -r requirements.txt
+```
+
+---
+
+# Bootstrap CDK
+
+Bootstrap the AWS account once per region.
+
+```bash
+cdk bootstrap
+```
+
+---
+
+# Local Development
+
+List stacks
+
+```bash
+cdk ls
+```
+
+Generate CloudFormation template
+
+```bash
+cdk synth
+```
+
+Preview infrastructure changes
+
+```bash
+cdk diff
+```
+
+Deploy
+
+```bash
+cdk deploy
+```
+
+Destroy
+
+```bash
+cdk destroy
+```
+
+---
+
+# GitHub Environments
+
+Two GitHub Environments are used.
+
+- dev
+- prod
+
+Each environment contains:
+
+| Variable | Value |
+|----------|-------|
+| AWS_REGION | us-east-1 |
+| STAGE | dev / prod |
+
+Required GitHub Secrets:
+
+| Secret |
+|---------|
+| AWS_ACCESS_KEY_ID |
+| AWS_SECRET_ACCESS_KEY |
+
+---
+
+# CI/CD
+
+## Development
+
+Trigger:
 
 ```
-% .venv\Scripts\activate.bat
+Push to dev
 ```
 
-Once the virtualenv is activated, you can install the required dependencies.
+Pipeline:
 
 ```
-$ pip install -r requirements.txt
+CDK Synth
+↓
+CDK Diff
+↓
+CDK Deploy
 ```
 
-At this point you can now synthesize the CloudFormation template for this code.
+---
+
+## Promote to Production
+
+Trigger:
 
 ```
-$ cdk synth
+Manual
 ```
 
-To add additional dependencies, for example other CDK libraries, just add
-them to your `requirements.txt` file and rerun the `python -m pip install -r requirements.txt`
-command.
+This workflow merges the `dev` branch into `main`.
 
-## Useful commands
+---
 
- * `cdk ls`          list all stacks in the app
- * `cdk synth`       emits the synthesized CloudFormation template
- * `cdk deploy`      deploy this stack to your default AWS account/region
- * `cdk diff`        compare deployed stack with current state
- * `cdk docs`        open CDK documentation
+## Production Validation
 
-Enjoy!
+Trigger:
+
+```
+Push to main
+```
+
+Pipeline:
+
+```
+CDK Synth
+↓
+CDK Diff
+```
+
+This validates infrastructure changes before deployment.
+
+---
+
+## Production Deployment
+
+Trigger:
+
+```
+Manual
+```
+
+Pipeline:
+
+```
+CDK Deploy
+```
+
+---
+
+# Deployment Flow
+
+```
+Push to dev
+      │
+      ▼
+DEV Deployment
+      │
+      ▼
+Manual Promotion
+(dev → main)
+      │
+      ▼
+Production Diff
+      │
+      ▼
+Manual Production Deployment
+```
+
+---
+
+# Project Structure
+
+```
+.
+├── app.py
+├── aws_api/
+│   └── aws_api_stack.py
+├── lambda/
+│   └── index.py
+├── requirements.txt
+├── cdk.json
+└── .github/
+    └── workflows/
+        ├── dev-deploy.yml
+        ├── promote-dev-to-main.yml
+        ├── prod-diff.yml
+        └── prod-deploy.yml
+```
+
+---
+
+# AWS Resources
+
+The CDK stack creates:
+
+- API Gateway REST API
+- Lambda Function
+- DynamoDB Table
+- IAM Roles and Policies
+- CloudFormation Outputs
+
+---
+
+# Future Improvements
+
+- Replace IAM Access Keys with GitHub OIDC authentication
+- Least-privilege IAM policies
+- Automated testing
+- Multi-account deployments
+- Monitoring with CloudWatch
